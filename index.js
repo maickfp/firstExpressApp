@@ -49,9 +49,9 @@ app.get('/users/:id', (req, res)=>{
     }
 
     if(user == null){
-        res.status(404).send(`<h1>NO EXISTE EL USUARIO ${id}</h1>`)
+        res.status(404).send(`<h1>NO EXISTE EL USUARIO CON ID ${id}</h1>`)
     }else{
-        res.status(200).send(`<h1>USUARIO ${id}</h1><p>name:${user.name}</p>`);
+        res.status(200).send(`<h1>DETALLE DEL USUARIO</h1><p>ID:${id}</p><p>name:${user.name}</p>`);
     }
 });
 // Crear
@@ -71,7 +71,7 @@ app.post('/users', (req, res)=>{
     }
     
     if(userExist){
-        res.status(500).send(`<h1>YA EXISTE EL USUARIO ${user.id}</h1>`)
+        res.status(500).send(`<h1>YA EXISTE EL USUARIO CON ID ${user.id}</h1>`)
     }else{
         users.push(user);
         res.status(201).send(`<h1>USUARIO ${user.name} CON ID ${user.id} CREADO</h1>`);
@@ -90,10 +90,10 @@ app.put('/users/:id', (req, res)=>{
     }
     
     if(user == null){
-        res.status(404).send(`<h1>NO EXISTE EL USUARIO ${id}</h1>`)
+        res.status(404).send(`<h1>NO EXISTE EL USUARIO CON ID ${id}</h1>`)
     }else{
         user.name= req.body.name;
-        res.status(200).send(`<h1>USUARIO ${id} ACTUALIZADO</h1>`);
+        res.status(200).send(`<h1>USUARIO CON ID ${id} ACTUALIZADO</h1>`);
     }
 });
 // Eliminar
@@ -103,16 +103,16 @@ app.delete('/users/:id', (req, res)=>{
     for(let i in users){
         const user = users[i];
         if(user.id == id){
+            users.splice(i,1);
             userExist = true;
             break;
         }
     }
     
     if(!userExist){
-        res.status(404).send(`<h1>NO EXISTE EL USUARIO ${id}</h1>`)
+        res.status(404).send(`<h1>NO EXISTE EL USUARIO CON ID ${id}</h1>`)
     }else{
-        users.splice(i,i+1);
-        res.status(200).send(`<h1>USUARIO ${id} ELIMINADO</h1>`);
+        res.status(200).send(`<h1>USUARIO CON ID ${id} ELIMINADO</h1>`);
     }
 });
 
