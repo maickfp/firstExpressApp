@@ -12,13 +12,64 @@ const log = require("./log");
 
 // Inicializadores
 const app = express();
+
+// Variables
 let users = [];
+let tokens = [];
+
+// Middlewares
+const logger = (req, res, next) => {
+    log.info(`[${req.ip}] ${req.method} ${req.protocol} ${req.path}`);
+    next();
+};
+const secured = (req, res, next) => {
+    const token = req.header("token");
+
+    if(tokens.includes(token)){
+        next();
+    }else{
+        log.warn(`Token ${token} inválido`);
+        res.status(500).send("Token inválido");
+    }
+};
+const auth = (req, res, next) => {
+    const username = req.body.username;
+    const password = req.body.password;
+
+    const user = users.find(tmpUser => tmpUser.username == username);
+
+    let status = "notExist";
+    if(user !== undefined){
+        status = user.password == password ? "ok" : "invalidPassword";
+    }
+    
+    switch(status){
+        case "ok":
+            next();
+            break;
+        case "invalidPassword":
+            res.status(500).send(`Clave inválida`);
+            break;
+        default:
+            res.status(500).send(`No existe el usuario ${username}`);
+    }
+
+};
 
 // CONFIGURACIONES GENERALES
+// logger propio
+app.use(logger);
 // deshabilitar cache
 app.use(nocache());
 // parse application/json
 app.use(bodyParser.json());
+
+// FUNCIONES Y PROCEDIMIENTOS GENERALES
+function generateToken(){
+    const token = Math.floor((Math.random() * 100000)).toString();
+    tokens.push(token);
+    return token;
+}
 
 // Ruta: raiz
 app.get('/', (req, res)=>{
@@ -26,55 +77,48 @@ app.get('/', (req, res)=>{
 });
 
 // Ruta: users
+// Login
+app.post('/users/login', auth, (req, res) => {
+    const username = req.body.username;
+    const token = generateToken();
+    res.status(200).send(`Bienvenid@ ${username}. Token: ${token}`);
+});
 // Listar
-app.get('/users', (req, res)=>{
+app.get('/users', secured, (req, res)=>{
     let usersList = "<ul>";
-    for(i in users){
-        const tmpUser = users[i];
-        usersList += `<li>${tmpUser.id} - ${tmpUser.name}</li>`;
-    }
+    users.forEach((user)=>{
+        usersList += `<li>${user.username}</li>`;
+    });
     usersList += "</ul>"
     res.status(200).send(`<h1>USUARIOS</h1>${usersList}`);
 });
 // Mostrar Detalle
-app.get('/users/:id', (req, res)=>{
-    const id = req.params.id;
-    let user = null;
-    for(i in users){
-        const tmpUser = users[i];
-        if(tmpUser.id == id){
-            user = tmpUser;
-            break;
-        }
-    }
+app.get('/users/:username', secured, (req, res)=>{
+    const username = req.params.username;
 
-    if(user == null){
-        res.status(404).send(`<h1>NO EXISTE EL USUARIO CON ID ${id}</h1>`)
+    const user = users.find(tmpUser => tmpUser.username == username);
+
+    if(user === undefined){
+        res.status(404).send(`NO EXISTE EL USUARIO ${username}`)
     }else{
-        res.status(200).send(`<h1>DETALLE DEL USUARIO</h1><p>ID:${id}</p><p>name:${user.name}</p>`);
+        res.status(200).send(`DETALLE DEL USUARIO @${user.username}`);
     }
 });
 // Crear
 app.post('/users', (req, res)=>{
-    const user = {
-        id: req.body.id,
-        name: req.body.name
-    };
+    const username = req.body.username;
+    const password = req.body.password;
 
-    let userExist = false;
-    for(i in users){
-        const tmpUser = users[i];
-        if(tmpUser.id == user.id){
-            userExist = true;
-            break;
-        }
-    }
+    const user = users.find(tmpUser => tmpUser.username == username);
     
-    if(userExist){
-        res.status(500).send(`<h1>YA EXISTE EL USUARIO CON ID ${user.id}</h1>`)
+    if(user !== undefined){
+        res.status(500).send(`YA EXISTE EL USUARIO ${username}`)
     }else{
-        users.push(user);
-        res.status(201).send(`<h1>USUARIO ${user.name} CON ID ${user.id} CREADO</h1>`);
+        users.push({
+            username: username,
+            password: password
+        });
+        res.status(201).send(`USUARIO ${username} CREADO`);
     }
 });
 // Editar
