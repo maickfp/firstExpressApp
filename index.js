@@ -4,6 +4,8 @@ const nocache = require('nocache')
 const express = require('express');
 // importar body-parser
 const bodyParser = require('body-parser');
+// importas fs - manejo de archivos
+const fs = require("fs");
 
 // importar configuracion
 const config = require("./config");
@@ -28,7 +30,7 @@ const secured = (req, res, next) => {
     if(tokens.includes(token)){
         next();
     }else{
-        log.warn(`Token ${token} inválido`);
+        log.warn(`[${req.ip}] Token ${token} inválido`);
         res.status(500).send("Token inválido");
     }
 };
@@ -51,7 +53,7 @@ const auth = (req, res, next) => {
             res.status(500).send(`Clave inválida`);
             break;
         default:
-            res.status(500).send(`No existe el usuario ${username}`);
+            res.status(500).send(`No existe el usuario @${username}`);
     }
 
 };
@@ -70,6 +72,26 @@ function generateToken(){
     tokens.push(token);
     return token;
 }
+function loadUsers(){
+    fs.readFile("./files/usuarios.json", "utf8", (err, data) => {
+    
+        if(err){
+            log.error("HA OCURRIDO UN ERROR LEYENDO ARCHIVO DE USUARIOS");
+            return;
+        }
+    
+        const usersTmp = JSON.parse(data);
+        usersTmp.forEach((user)=>{
+            createUser(user);
+        });
+        
+        
+    });
+}
+function createUser(user){
+    users.push(user);
+    log.info(`USUARIO @${user.username} CREADO`);
+}
 
 // Ruta: raiz
 app.get('/', (req, res)=>{
@@ -82,6 +104,13 @@ app.post('/users/login', auth, (req, res) => {
     const username = req.body.username;
     const token = generateToken();
     res.status(200).send(`Bienvenid@ ${username}. Token: ${token}`);
+});
+// Logout
+app.post('/users/logout', secured, (req, res) => {
+    const token = req.header("token");
+    const tokenIndex = tokens.indexOf(token);
+    tokens.splice(tokenIndex,1);
+    res.status(200).send(`Adiós vaquero`);
 });
 // Listar
 app.get('/users', secured, (req, res)=>{
@@ -99,7 +128,7 @@ app.get('/users/:username', secured, (req, res)=>{
     const user = users.find(tmpUser => tmpUser.username == username);
 
     if(user === undefined){
-        res.status(404).send(`NO EXISTE EL USUARIO ${username}`)
+        res.status(404).send(`NO EXISTE EL USUARIO @${username}`)
     }else{
         res.status(200).send(`DETALLE DEL USUARIO @${user.username}`);
     }
@@ -112,51 +141,45 @@ app.post('/users', (req, res)=>{
     const user = users.find(tmpUser => tmpUser.username == username);
     
     if(user !== undefined){
-        res.status(500).send(`YA EXISTE EL USUARIO ${username}`)
+        res.status(500).send(`YA EXISTE EL USUARIO @${username}`)
     }else{
-        users.push({
+        createUser({
             username: username,
             password: password
-        });
-        res.status(201).send(`USUARIO ${username} CREADO`);
+        })
+        res.status(201).send(`USUARIO @${user.username} CREADO`);
     }
 });
 // Editar
-app.put('/users/:id', (req, res)=>{
-    const id = req.params.id;
-    let user = null;
-    for(let i in users){
-        const tmpUser = users[i];
-        if(tmpUser.id == id){
-            user = tmpUser;
-            break;
-        }
-    }
+app.put('/users/:username', secured, (req, res)=>{
+    const username = req.params.username;
+    const oldPassword = req.body.oldPassword;
+    const newPassword = req.body.newPassword;
+
+    const user = users.find(tmpUser => tmpUser.username == username);
     
-    if(user == null){
-        res.status(404).send(`<h1>NO EXISTE EL USUARIO CON ID ${id}</h1>`)
+    if(user === undefined){
+        res.status(404).send(`NO EXISTE EL USUARIO @${username}`)
     }else{
-        user.name= req.body.name;
-        res.status(200).send(`<h1>USUARIO CON ID ${id} ACTUALIZADO</h1>`);
+        if(user.password !== oldPassword){
+            res.status(500).send(`CLAVE ANTERIOR INCORRECTA`)
+        }else{
+            user.password = newPassword;
+            res.status(200).send(`USUARIO @${username} ACTUALIZADO`);
+        }
     }
 });
 // Eliminar
-app.delete('/users/:id', (req, res)=>{
-    const id = req.params.id;
-    let userExist = false;
-    for(let i in users){
-        const user = users[i];
-        if(user.id == id){
-            users.splice(i,1);
-            userExist = true;
-            break;
-        }
-    }
+app.delete('/users/:username', secured, (req, res)=>{
+    const username = req.params.username;
+
+    const userIndex = users.findIndex(tmpUser => tmpUser.username == username);
     
-    if(!userExist){
-        res.status(404).send(`<h1>NO EXISTE EL USUARIO CON ID ${id}</h1>`)
+    if(userIndex === -1){
+        res.status(404).send(`NO EXISTE EL USUARIO @${username}`);
     }else{
-        res.status(200).send(`<h1>USUARIO CON ID ${id} ELIMINADO</h1>`);
+        users.splice(userIndex,1);
+        res.status(200).send(`USUARIO @${username} ELIMINADO`);
     }
 });
 
@@ -173,5 +196,6 @@ app.get('/admin', (req, res)=>{
 
 // Iniciar servidor
 app.listen(config.port, ()=>{
+    loadUsers();
     log.info(`Servidor iniciado en puerto ${config.port}`);
 });
