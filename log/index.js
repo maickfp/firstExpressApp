@@ -1,13 +1,22 @@
+const fs = require("fs");
 const log = {
     info: (msg) => {
-        console.log(`INFO: ${msg}`);
+        printLine(`INFO [${new Date()}]: ${msg}\n`);
     },
     warn: (msg) => {
-        console.log(`WARN: ${msg}`);
+        printLine(`WARN [${new Date()}]: ${msg}\n`);
     },
     error: (msg) => {
-        console.log(`**ERROR**: ${msg}`);
+        printLine(`**ERROR** [${new Date()}]: ${msg}\n`);
     }
 };
+
+function printLine(line){
+    fs.appendFile("./files/log.txt", line, (err)=>{
+        if(err){
+            console.log(`Log error. ${line}`);
+        }
+    });
+}
 
 module.exports = log;
