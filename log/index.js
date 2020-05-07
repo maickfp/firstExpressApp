@@ -1,4 +1,5 @@
 const fs = require("fs");
+
 const log = {
     info: (msg) => {
         printLine(`INFO [${new Date()}]: ${msg}\n`);
@@ -12,7 +13,7 @@ const log = {
 };
 
 function printLine(line){
-    fs.appendFile("./files/log.txt", line, (err)=>{
+    fs.appendFile("./files/application.log", line, (err)=>{
         if(err){
             console.log(`Log error. ${line}`);
         }
