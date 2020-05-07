@@ -15,19 +15,21 @@ const morgan = require('morgan');
 const rfs = require("rotating-file-stream");
 // importar path
 const path = require("path");
+// importar bcrypt
+const bcrypt = require("bcrypt");
 
 // MODULOS PROPRIOS
 // importar configuracion
-const config = require("./config");
+const config = require("./mine_modules/config");
 // importar log
-const log = require("./log");
+const log = require("./mine_modules/log");
 
 // Inicializadores
 const app = express();
 
 // Variables
 let users = [];
-let tokens = [];
+const saltRounds = 5;
 // stream para logger morgan peticiones
 const accessLoggerStream = rfs.createStream("access.log", {
     path: path.join(__dirname, "files"),
@@ -45,7 +47,6 @@ const errorLogger = (err, req, res, next) => {
 const secured = (req, res, next) => {
     const token = req.header("x-auth");
     
-    //tokens.includes(token)
     jwt.verify(token, "MakeItReal", (err, user) => {
         if(err){
             // TokenExpiredError
@@ -102,7 +103,6 @@ function generateToken(user){
         expiresIn: '1m'
     });
 
-    tokens.push(token);
     return token;
 }
 function loadUsers(){
@@ -150,8 +150,6 @@ app.post('/users/login', auth, (req, res) => {
 app.post('/users/logout', (req, res) => {
     const token = req.header("x-auth");
     // expirar token
-    const tokenIndex = tokens.indexOf(token);
-    tokens.splice(tokenIndex,1);
     res.status(200).send(`Adiós vaquero`);
 });
 // Listar
