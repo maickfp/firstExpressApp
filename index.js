@@ -1,12 +1,22 @@
+// MODULOS DE TERCEROS
 // importar nocache
 const nocache = require('nocache')
 // importar express
 const express = require('express');
 // importar body-parser
 const bodyParser = require('body-parser');
-// importas fs - manejo de archivos
+// importar fs - manejo de archivos
 const fs = require("fs");
+// importar jsonwebtoken
+const jwt = require('jsonwebtoken');
+// importar morgan - logger de tercero
+const morgan = require('morgan');
+// imporatar rotating-file-stream - rotar archivos (logs)
+const rfs = require("rotating-file-stream");
+// importar path
+const path = require("path");
 
+// MODULOS PROPRIOS
 // importar configuracion
 const config = require("./config");
 // importar log
@@ -18,21 +28,34 @@ const app = express();
 // Variables
 let users = [];
 let tokens = [];
+// stream para logger morgan peticiones
+const accessLoggerStream = rfs.createStream("access.log", {
+    path: path.join(__dirname, "files"),
+    size: "10M",
+    interval: "1d",
+    compress: "gzip"
+});
 
 // Middlewares
-const logger = (req, res, next) => {
-    log.info(`[${req.ip}] ${req.method} ${req.protocol} ${req.path}`);
-    next();
+// logeer morgan
+const errorLogger = (err, req, res, next) => {
+    log.error(`[${req.ip}] ${req.protocol} ${req.method} ${req.path} STACK: ${err.stack}`);
+    res.status(500).send(`Ha ocurrido un error interno en el sistema`);
 };
 const secured = (req, res, next) => {
-    const token = req.header("token");
-
-    if(tokens.includes(token)){
-        next();
-    }else{
-        log.warn(`[${req.ip}] Token ${token} inválido`);
-        res.status(500).send("Token inválido");
-    }
+    const token = req.header("x-auth");
+    
+    //tokens.includes(token)
+    jwt.verify(token, "MakeItReal", (err, user) => {
+        if(err){
+            // TokenExpiredError
+            log.warn(`[${req.ip}] Token ${token} inválido. Error:${err.name}`);
+            res.status(500).send("Token inválido");
+        }else{
+            req.user = user;
+            next();
+        }
+    });
 };
 const auth = (req, res, next) => {
     const username = req.body.username;
@@ -47,6 +70,7 @@ const auth = (req, res, next) => {
     
     switch(status){
         case "ok":
+            req.user = user;
             next();
             break;
         case "invalidPassword":
@@ -59,16 +83,25 @@ const auth = (req, res, next) => {
 };
 
 // CONFIGURACIONES GENERALES
-// logger propio
-app.use(logger);
+// loggen morgan
+app.use(morgan('combined', {stream: accessLoggerStream}));
+// logger de errores propio
+app.use(errorLogger);
 // deshabilitar cache
 app.use(nocache());
 // parse application/json
 app.use(bodyParser.json());
 
 // FUNCIONES Y PROCEDIMIENTOS GENERALES
-function generateToken(){
-    const token = Math.floor((Math.random() * 100000)).toString();
+function generateToken(user){
+    const tokenUser = {
+        username: user.username
+    };
+
+    const token = jwt.sign(tokenUser, 'MakeItReal', {
+        expiresIn: '1m'
+    });
+
     tokens.push(token);
     return token;
 }
@@ -89,8 +122,16 @@ function loadUsers(){
     });
 }
 function createUser(user){
+    const userIndex = users.findIndex(tmpUser => tmpUser.username == user.username);
+
+    if(userIndex !== -1){
+        log.error(`YA EXISTE EL USUARIO @${user.username}`);
+        return false;
+    }
+
     users.push(user);
     log.info(`USUARIO @${user.username} CREADO`);
+    return true;
 }
 
 // Ruta: raiz
@@ -101,19 +142,21 @@ app.get('/', (req, res)=>{
 // Ruta: users
 // Login
 app.post('/users/login', auth, (req, res) => {
-    const username = req.body.username;
-    const token = generateToken();
-    res.status(200).send(`Bienvenid@ ${username}. Token: ${token}`);
+    const user = req.user;
+    const token = generateToken(user);
+    res.status(200).send(`Bienvenid@ ${user.username}. Token: ${token}`);
 });
 // Logout
-app.post('/users/logout', secured, (req, res) => {
-    const token = req.header("token");
+app.post('/users/logout', (req, res) => {
+    const token = req.header("x-auth");
+    // expirar token
     const tokenIndex = tokens.indexOf(token);
     tokens.splice(tokenIndex,1);
     res.status(200).send(`Adiós vaquero`);
 });
 // Listar
 app.get('/users', secured, (req, res)=>{
+
     let usersList = "<ul>";
     users.forEach((user)=>{
         usersList += `<li>${user.username}</li>`;
@@ -137,16 +180,19 @@ app.get('/users/:username', secured, (req, res)=>{
 app.post('/users', (req, res)=>{
     const username = req.body.username;
     const password = req.body.password;
+    const firstName = req.body.firstName;
+    const lastName = req.body.lastName;
 
-    const user = users.find(tmpUser => tmpUser.username == username);
+    const userCreated = createUser({
+        username: username,
+        password: password,
+        firstName: firstName,
+        lastName: lastName
+    });
     
-    if(user !== undefined){
+    if(!userCreated){
         res.status(500).send(`YA EXISTE EL USUARIO @${username}`)
     }else{
-        createUser({
-            username: username,
-            password: password
-        })
         res.status(201).send(`USUARIO @${user.username} CREADO`);
     }
 });
