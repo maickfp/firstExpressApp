@@ -15,21 +15,20 @@ const morgan = require('morgan');
 const rfs = require("rotating-file-stream");
 // importar path
 const path = require("path");
-// importar bcrypt
-const bcrypt = require("bcrypt");
 
 // MODULOS PROPRIOS
 // importar configuracion
 const config = require("./mine_modules/config");
 // importar log
 const log = require("./mine_modules/log");
+// importar security
+const security = require("./mine_modules/security");
 
 // Inicializadores
 const app = express();
 
 // Variables
 let users = [];
-const saltRounds = 5;
 // stream para logger morgan peticiones
 const accessLoggerStream = rfs.createStream("access.log", {
     path: path.join(__dirname, "files"),
@@ -66,7 +65,7 @@ const auth = (req, res, next) => {
 
     let status = "notExist";
     if(user !== undefined){
-        status = user.password == password ? "ok" : "invalidPassword";
+        status = security.comparePassword(password, user.password) ? "ok" : "invalidPassword";
     }
     
     switch(status){
@@ -128,6 +127,9 @@ function createUser(user){
         log.error(`YA EXISTE EL USUARIO @${user.username}`);
         return false;
     }
+
+    // encriptar password
+    user.password = security.encodePassword(user.password);
 
     users.push(user);
     log.info(`USUARIO @${user.username} CREADO`);
