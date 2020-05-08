@@ -31,7 +31,7 @@ const app = express();
 let users = [];
 // stream para logger morgan peticiones
 const accessLoggerStream = rfs.createStream("access.log", {
-    path: path.join(__dirname, "files"),
+    path: path.join(__dirname, "logs"),
     size: "10M",
     interval: "1d",
     compress: "gzip"

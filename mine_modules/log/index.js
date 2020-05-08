@@ -1,4 +1,7 @@
+// importar fs - manejo de archivos
 const fs = require("fs");
+// importar path
+const path = require("path");
 
 const log = {
     info: (msg) => {
@@ -13,7 +16,7 @@ const log = {
 };
 
 function printLine(line){
-    fs.appendFile("./files/application.log", line, (err)=>{
+    fs.appendFile("./logs/application.log", line, (err)=>{
         if(err){
             console.log(`Log error. ${line}`);
         }
