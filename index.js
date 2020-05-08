@@ -43,11 +43,11 @@ const errorLogger = (err, req, res, next) => {
 const secured = (req, res, next) => {
     const token = req.header("x-auth");
     
-    jwt.verify(token, "MakeItReal", (err, user) => {
+    jwt.verify(token, config.tokenKey, (err, user) => {
         if(err){
             // TokenExpiredError
             log.warn(`[${req.ip}] Token ${token} inválido. Error:${err.name}`);
-            res.status(500).send("Token inválido");
+            res.status(500).send(`Token inválido. ${err.name}`);
         }else{
             req.user = user;
             next();
@@ -95,8 +95,8 @@ function generateToken(user){
         username: user.username
     };
 
-    const token = jwt.sign(tokenUser, 'MakeItReal', {
-        expiresIn: '1m'
+    const token = jwt.sign(tokenUser, config.tokenKey, {
+        expiresIn: '1h'
     });
 
     return token;
