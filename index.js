@@ -7,8 +7,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 // importar fs - manejo de archivos
 const fs = require("fs");
-// importar jsonwebtoken
-const jwt = require('jsonwebtoken');
 // importar morgan - logger de tercero
 const morgan = require('morgan');
 // imporatar rotating-file-stream - rotar archivos (logs)
@@ -42,17 +40,7 @@ const errorLogger = (err, req, res, next) => {
 };
 const secured = (req, res, next) => {
     const token = req.header("x-auth");
-    
-    jwt.verify(token, config.tokenKey, (err, user) => {
-        if(err){
-            // TokenExpiredError
-            log.warn(`[${req.ip}] Token ${token} inválido. Error:${err.name}`);
-            res.status(500).send(`Token inválido. ${err.name}`);
-        }else{
-            req.user = user;
-            next();
-        }
-    });
+    security.verifyToken(token, req, res, next);
 };
 const auth = (req, res, next) => {
     const username = req.body.username;
@@ -90,17 +78,6 @@ app.use(nocache());
 app.use(bodyParser.json());
 
 // FUNCIONES Y PROCEDIMIENTOS GENERALES
-function generateToken(user){
-    const tokenUser = {
-        username: user.username
-    };
-
-    const token = jwt.sign(tokenUser, config.tokenKey, {
-        expiresIn: '1h'
-    });
-
-    return token;
-}
 function loadUsers(){
     fs.readFile("./files/usuarios.json", "utf8", (err, data) => {
     
@@ -142,7 +119,7 @@ app.get('/', (req, res)=>{
 // Login
 app.post('/users/login', auth, (req, res) => {
     const user = req.user;
-    const token = generateToken(user);
+    const token = security.generateToken(user);
     res.status(200).send(`Bienvenid@ ${user.username}. Token: ${token}`);
 });
 // Logout

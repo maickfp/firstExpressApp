@@ -1,6 +1,8 @@
 const config = {
     port: 80,
-    tokenKey: 'secret-key'
+    tokenExpiresIn: '1h',
+    tokenKey: 'secret-key',
+    saltRounds = 5
 };
 
 module.exports = config;
