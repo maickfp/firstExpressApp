@@ -1,26 +1,28 @@
-// importar fs - manejo de archivos
-const fs = require("fs");
-// importar path
-const path = require("path");
+// imporatar rotating-file-stream - rotar archivos (logs)
+const rfs = require("rotating-file-stream");
+
+// stream para logger propio - aplicacion
+const applicationLoggerStream = rfs.createStream("application.log", {
+    path: "./logs",
+    size: "10M",
+    interval: "1d",
+    compress: "gzip"
+});
 
 const log = {
     info: (msg) => {
-        printLine(`INFO [${new Date()}]: ${msg}\n`);
+        printLine(`INFO [${new Date()}]: ${msg}`);
     },
     warn: (msg) => {
-        printLine(`WARN [${new Date()}]: ${msg}\n`);
+        printLine(`WARN [${new Date()}]: ${msg}`);
     },
     error: (msg) => {
-        printLine(`**ERROR** [${new Date()}]: ${msg}\n`);
+        printLine(`**ERROR** [${new Date()}]: ${msg}`);
     }
 };
 
 function printLine(line){
-    fs.appendFile("./logs/application.log", line, (err)=>{
-        if(err){
-            console.log(`Log error. ${line}`);
-        }
-    });
+    applicationLoggerStream.write(`${line}\n`);
 }
 
 module.exports = log;

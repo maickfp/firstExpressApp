@@ -13,8 +13,6 @@ const jwt = require('jsonwebtoken');
 const morgan = require('morgan');
 // imporatar rotating-file-stream - rotar archivos (logs)
 const rfs = require("rotating-file-stream");
-// importar path
-const path = require("path");
 
 // MODULOS PROPRIOS
 // importar configuracion
@@ -29,16 +27,15 @@ const app = express();
 
 // Variables
 let users = [];
-// stream para logger morgan peticiones
+// stream para logger morgan - peticiones
 const accessLoggerStream = rfs.createStream("access.log", {
-    path: path.join(__dirname, "logs"),
+    path: "./logs",
     size: "10M",
     interval: "1d",
     compress: "gzip"
 });
 
-// Middlewares
-// logeer morgan
+// Middlewares propios
 const errorLogger = (err, req, res, next) => {
     log.error(`[${req.ip}] ${req.protocol} ${req.method} ${req.path} STACK: ${err.stack}`);
     res.status(500).send(`Ha ocurrido un error interno en el sistema`);
@@ -83,7 +80,7 @@ const auth = (req, res, next) => {
 };
 
 // CONFIGURACIONES GENERALES
-// loggen morgan
+// logger morgan
 app.use(morgan('combined', {stream: accessLoggerStream}));
 // logger de errores propio
 app.use(errorLogger);
