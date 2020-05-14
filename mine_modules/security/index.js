@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 
 // MODULOS PROPRIOS
 // importar configuracion
-const config = require("./mine_modules/config");
+const config = require('../config');
 
 const security = {
     encodePassword: (plainPassword) => {
@@ -30,7 +30,7 @@ const security = {
         return jwt.verify(token, config.tokenKey, (err, user) => {
             if(err){
                 // TokenExpiredError
-                log.warn(`[${req.ip}] Token ${token} inválido. Error:${err.name}`);
+                //log.warn(`[${req.ip}] Token ${token} inválido. Error:${err.name}`);
                 res.status(500).send(`Token inválido. ${err.name}`);
             }else{
                 req.user = user;
