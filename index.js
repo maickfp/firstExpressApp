@@ -1,6 +1,6 @@
 // MODULOS DE TERCEROS
 // importar nocache
-const nocache = require('nocache')
+const nocache = require('nocache');
 // importar express
 const express = require('express');
 // importar body-parser
